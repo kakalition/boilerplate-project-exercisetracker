@@ -16,8 +16,8 @@ app.get('/', (req, res) => {
 });
 
 app.get('/api/users', (req, res) => {
-  console.log('user', userMap.values);
-  res.json(userMap.values)
+  const result = Array.from(userMap.values())
+  res.json(result)
 });
 
 app.post('/api/users', (req, res) => {
@@ -26,7 +26,7 @@ app.post('/api/users', (req, res) => {
 
   const user = {
     username: username,
-    _id: _id,
+    _id: _id.toString(),
   }
 
   userMap.set(`${_id}`, user);
@@ -38,7 +38,7 @@ app.post('/api/users/:id/exercises', (req, res) => {
   const _id = req.params['id']
   const description = req.body['description']
   const duration = parseInt(req.body['duration'])
-  const date = req.body['date'] ?? (new Date).toDateString()
+  const date = new Date(req.body['date'] ? Date.parse(req.body['date']) : Date.now()).toDateString()
 
   const log = {
     description: description,
@@ -51,10 +51,13 @@ app.post('/api/users/:id/exercises', (req, res) => {
 
   userLogMap.set(`${_id}`, logs);
 
-  log._id = _id;
-  log.username = userMap.get(`${_id}`).username;
+  const output = {
+    username: userMap.get(`${_id}`).username,
+    ...log,
+    _id: _id
+  }
 
-  res.json(log)
+  res.json(output)
 });
 
 app.get('/api/users/:id/logs', (req, res) => {
@@ -62,17 +65,19 @@ app.get('/api/users/:id/logs', (req, res) => {
   const to = req.query.to;
   const limit = req.query.limit;
 
+  console.log(req.query)
+
   const id = req.params['id'];
 
   const user = userMap.get(`${id}`)
 
   let logs = userLogMap.get(`${id}`)
   if (from) {
-    logs = logs.filter((e) => e.date >= from);
+    logs = logs.filter((e) => Date.parse(e.date) >= Date.parse(from));
   }
 
   if (to) {
-    logs = logs.filter((e) => e.date <= to);
+    logs = logs.filter((e) => Date.parse(e.date) <= Date.parse(to));
   }
 
   if (limit) {
@@ -81,6 +86,8 @@ app.get('/api/users/:id/logs', (req, res) => {
 
   user.count = logs.length;
   user.log = logs;
+
+  console.log(user)
 
   res.json(user);
 });
